@@ -1,18 +1,200 @@
 <!DOCTYPE html>
 <html lang="pl">
     <head>
+        <style>
+@import url('https://fonts.googleapis.com/css2?family=Roboto&display=swap');
+
+body {
+    margin: 0px;
+    font-family: 'Roboto', sans-serif;
+}
+
+h1, h2 {
+    font-weight: normal;
+}
+
+.logo {
+    height: 100px;
+}
+
+#header {
+    display: flex;
+    align-items: center;
+    width: calc(750px * 2 + 10px);
+}
+
+#oblicze-logo {
+    clip-path: inset(30px 0px);
+    transform: scale(2);
+    margin: 0px 6ch;
+}
+
+#byte_it-logo {
+    margin: 1rem 1ch 1rem 3ch;
+    height: 80px;
+}
+
+#content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#panels {
+    display: flex;
+}
+
+.panel {
+    margin: 10px;
+}
+
+canvas {
+    border: 1px solid black;
+}
+        </style>
     </head>
     <body>
-        <h1>Fraktale</h1>
-        <canvas width="500" height="500">
-            canvas elo elo
-        </canvas>
+        <div id="content">
+            <div id="header">
+                <img class="logo" id="oblicze-logo" src="img/oblicze_logo.jpg">
+                <h1>'23</h1>
+                <img class="logo" id="byte_it-logo" src="img/BYTE_IT.png">
+                <h1 id="title">Fraktale</h1>
+            </div>
+            <div id="panels">
+                <div class="panel">
+                    <h2 id="julia-title">Wybrany zbiór Julii</h2>
+                    <canvas id="julia" width="750" height="500">
+                        canvas julia set elo elo
+                    </canvas>
+                </div>
+                <div class="panel">
+                    <h2>Zbiór Mandelbrota</h2>
+                    <canvas id="mandelbrot" width="750" height="500">
+                        canvas mandal elo elo
+                    </canvas>
+                </div>
+            </div>
+        </div>
     </body>
 
     <script>
-        const canvas = document.querySelector('canvas');
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = 'green';
-        ctx.fillRect(10, 10, 100, 100);
+        // add two complex numbers
+        function add(a, b) {
+            return { real: a.real + b.real, imag: a.imag + b.imag };
+        }
+        // multiply two complex numbers
+        function mul(A, B) {
+            // (a + bi) * (c + di) = ac + adi + bci - bd = ac - bd + (ad + bc)i
+            const a = A.real;
+            const b = A.imag;
+            const c = B.real
+            const d = B.imag;
+            return { real: a * c - b * d, imag: a * d + b * c };
+        }
+
+        function f(z, c) {
+            return add(mul(z, z), c);
+        }
+
+        // get absolute value of a complex number squared
+        function absSq(z) {
+            return z.real * z.real + z.imag * z.imag;
+        }
+
+        function getIterations(f, z, maxIterations) {
+            let i = 0;
+            while (absSq(z) < 4 && i < maxIterations) {
+                z = f(z);
+                i++;
+            }
+            return i;
+        }
+
+        function drawJuliaSet(c) {
+            const canvas = document.getElementById('julia');
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.createImageData(canvas.width, canvas.height);
+
+            for (let i = 0; i < imageData.data.length; i += 4) {
+                // pixel coordinates
+                let x = Math.floor(i % (4 * canvas.width) / 4);
+                let y = Math.floor(i / (4 * canvas.width));
+
+                const func = (z) => f(z, c);
+
+                const z = { real: (0.5 - x / canvas.width) * 2.5 * 1.5, imag: (0.5 - y / canvas.height) * 2.5 };
+                const maxIterations = 100;
+                const it = getIterations(func, z, maxIterations);
+                color = it * 256 / maxIterations;
+
+                imageData.data[i + 0] = color; // R value
+                imageData.data[i + 1] = 0; // G value
+                imageData.data[i + 2] = 0; // B value
+                imageData.data[i + 3] = 255; // A value
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+
+            const title = document.getElementById("julia-title");
+            title.innerHTML = `Wybrany zbiór Julii (c = ${c.real.toPrecision(3)} ${c.imag >= 0 ? '+' : '-'} ${Math.abs(c.imag.toPrecision(3))}i)`;
+
+            console.log('printed julia');
+        }
+        
+        function drawMandelbrotSet() {
+            const canvas = document.getElementById('mandelbrot');
+            const ctx = canvas.getContext('2d');
+            const imageData = ctx.createImageData(canvas.width, canvas.height);
+
+            for (let i = 0; i < imageData.data.length; i += 4) {
+                // pixel coordinates
+                let x = Math.floor(i % (4 * canvas.width) / 4);
+                let y = Math.floor(i / (4 * canvas.width));
+
+                const z = { real: (-0.5 + x / canvas.width) * 2.5 * 1.5, imag: (0.5 - y / canvas.height) * 2.5 };
+                const maxIterations = 100;
+                const func = (x) => f(x, z);
+                const it = getIterations(func, z, maxIterations);
+                color = it * 256 / maxIterations;
+
+                imageData.data[i + 0] = color; // R value
+                imageData.data[i + 1] = 0; // G value
+                imageData.data[i + 2] = 0; // B value
+                imageData.data[i + 3] = 255; // A value
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+            
+            // draw axes
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            const w = canvas.width;
+            const h = canvas.height;
+            // draw x-axis
+            ctx.moveTo(0, h / 2);
+            ctx.lineTo(w, h / 2);
+            ctx.stroke();
+            // draw y-axis
+            ctx.moveTo(w / 2, 0);
+            ctx.lineTo(w / 2, h);
+            ctx.stroke();
+            console.log('printed mandelbrot');
+        }
+        drawMandelbrotSet();
+
+        function mandelbrotClick(e) {
+            let x = e.offsetX
+            let y = e.offsetY;
+
+            const z = { real: (-0.5 + x / e.target.width) * 2.5 * 1.5, imag: (0.5 - y / e.target.height) * 2.5 };
+            console.log(z);
+            drawJuliaSet(z);
+        }
+        document.getElementById("mandelbrot").onclick = mandelbrotClick;
+
+        // default values
+        const c = { real: 0.285, imag: 0.01 };
+        drawJuliaSet(c);
     </script>
 </html>
